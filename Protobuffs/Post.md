@@ -6,12 +6,12 @@ Most apps we make need a means of communication. We usually use *JSON*, or just 
 
 Regarding the performance gains, here they are, according to [this benchmark][2]:
 
-| benchmark                    | iter    | time/iter  | bytes alloc | allocs       |
+| benchmark										| iter		| time/iter	| bytes alloc | allocs			 |
 |------------------------------|---------|------------|-------------|--------------|
-| BenchmarkJsonMarshal-8       | 500000  | 3714 ns/op | 1232 B/op   | 10 allocs/op |
-| BenchmarkJsonUnmarshal-8     | 500000  | 4125 ns/op | 416 B/op    | 7 allocs/op  |
-| BenchmarkProtobufMarshal-8   | 1000000 | 1554 ns/op | 200 B/op    | 7 allocs/op  |
-| BenchmarkProtobufUnmarshal-8 | 1000000 | 1055 ns/op | 192 B/op    | 10 allocs/op |
+| BenchmarkJsonMarshal-8			 | 500000	| 3714 ns/op | 1232 B/op	 | 10 allocs/op |
+| BenchmarkJsonUnmarshal-8		 | 500000	| 4125 ns/op | 416 B/op		| 7 allocs/op	|
+| BenchmarkProtobufMarshal-8	 | 1000000 | 1554 ns/op | 200 B/op		| 7 allocs/op	|
+| BenchmarkProtobufUnmarshal-8 | 1000000 | 1055 ns/op | 192 B/op		| 10 allocs/op |
 
 Ok, now let's set up the environment.
 
@@ -55,33 +55,33 @@ We'll start with our first 4 fields of our client:
 
 ```proto
 message Client {
-    int32 id = 1;
-    string name = 2;
-    string email = 3;
-    string country = 4;
+		int32 id = 1;
+		string name = 2;
+		string email = 3;
+		string country = 4;
 }
 ```
 
 We will also define an inner structure *Mail*:
 
 ```proto
-    string country = 4;
+		string country = 4;
 
-    message Mail {
-        string remoteEmail = 1;
-        string body = 2;
-    }
+		message Mail {
+				string remoteEmail = 1;
+				string body = 2;
+		}
 ```
 
 and finally define the inbox field. It's an array of mails, which we create using the *repeated* keyword:
 
 ```proto
-    message Mail {
-        string remoteEmail = 1;
-        string body = 2;
-    }
+		message Mail {
+				string remoteEmail = 1;
+				string body = 2;
+		}
 
-    repeated Mail inbox = 5;
+		repeated Mail inbox = 5;
 }
 ```
 
@@ -126,16 +126,16 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion1
 
 type Client struct {
-	Id      int32          `protobuf:"varint,1,opt,name=id" json:"id,omitempty"`
-	Name    string         `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Email   string         `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
-	Country string         `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
-	Inbox   []*Client_Mail `protobuf:"bytes,5,rep,name=inbox" json:"inbox,omitempty"`
+	Id			int32					`protobuf:"varint,1,opt,name=id" json:"id,omitempty"`
+	Name		string				 `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Email	 string				 `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
+	Country string				 `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
+	Inbox	 []*Client_Mail `protobuf:"bytes,5,rep,name=inbox" json:"inbox,omitempty"`
 }
 
-func (m *Client) Reset()                    { *m = Client{} }
-func (m *Client) String() string            { return proto.CompactTextString(m) }
-func (*Client) ProtoMessage()               {}
+func (m *Client) Reset()										{ *m = Client{} }
+func (m *Client) String() string						{ return proto.CompactTextString(m) }
+func (*Client) ProtoMessage()							 {}
 func (*Client) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 func (m *Client) GetInbox() []*Client_Mail {
@@ -147,12 +147,12 @@ func (m *Client) GetInbox() []*Client_Mail {
 
 type Client_Mail struct {
 	RemoteEmail string `protobuf:"bytes,1,opt,name=remoteEmail" json:"remoteEmail,omitempty"`
-	Body        string `protobuf:"bytes,2,opt,name=body" json:"body,omitempty"`
+	Body				string `protobuf:"bytes,2,opt,name=body" json:"body,omitempty"`
 }
 
-func (m *Client_Mail) Reset()                    { *m = Client_Mail{} }
-func (m *Client_Mail) String() string            { return proto.CompactTextString(m) }
-func (*Client_Mail) ProtoMessage()               {}
+func (m *Client_Mail) Reset()										{ *m = Client_Mail{} }
+func (m *Client_Mail) String() string						{ return proto.CompactTextString(m) }
+func (*Client_Mail) ProtoMessage()							 {}
 func (*Client_Mail) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
 func init() {
@@ -221,7 +221,7 @@ http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 We'll *unmarshall* the data, passing in a *reference* to the *Client* to fill in, and check for errors.
 
 ```go
-    if err != nil {
+		if err != nil {
 			fmt.Println(err)
 		}
 
@@ -233,7 +233,7 @@ We'll *unmarshall* the data, passing in a *reference* to the *Client* to fill in
 and finally print it all
 
 ```go
-    if err := proto.Unmarshal(data, &myClient); err != nil {
+		if err := proto.Unmarshal(data, &myClient); err != nil {
 			fmt.Println(err)
 		}
 
@@ -283,7 +283,7 @@ func main() {
 We'll *marshall* the John (the *Client*) into raw data and finally send him to the server.
 
 ```go
-  myClient.Inbox = clientInbox
+	myClient.Inbox = clientInbox
 
 	data, err := proto.Marshal(&myClient)
 	if err != nil {
@@ -304,9 +304,11 @@ Note that we used bytes.NewBuffer, so our raw data satisfies the *Reader* requir
 
 ## Conclusion
 
-As you can see, protobuffs are really easy to use and provide an actual speed boost in your application. Hope you'll try to use them instead of JSON or other forms of transport in your next project.
+As you can see, protobuffs are really easy to use and provide an actual speed boost in your application. Hope you'll try to use them instead of JSON or other forms of transport in your next project. You can get more information about the more advanced functionalities here: https://developers.google.com/protocol-buffers/docs/gotutorial
 
 Happy coding!
+
+
 
 
 [1]: https://github.com/google/protobuf
