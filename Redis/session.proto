@@ -1,0 +1,7 @@
+syntax = "proto3";
+package main;
+
+message session {
+    string userName = 1;
+    bool loggedIn = 2;
+}

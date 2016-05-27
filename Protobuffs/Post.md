@@ -6,12 +6,14 @@ Most apps we make need a means of communication. We usually use *JSON*, or just 
 
 Regarding the performance gains, here they are, according to [this benchmark][2]:
 
-| benchmark										| iter		| time/iter	| bytes alloc | allocs			 |
-|------------------------------|---------|------------|-------------|--------------|
-| BenchmarkJsonMarshal-8			 | 500000	| 3714 ns/op | 1232 B/op	 | 10 allocs/op |
-| BenchmarkJsonUnmarshal-8		 | 500000	| 4125 ns/op | 416 B/op		| 7 allocs/op	|
-| BenchmarkProtobufMarshal-8	 | 1000000 | 1554 ns/op | 200 B/op		| 7 allocs/op	|
-| BenchmarkProtobufUnmarshal-8 | 1000000 | 1055 ns/op | 192 B/op		| 10 allocs/op |
+| benchmark													| iter		 	| time/iter		| bytes alloc 	| allocs			 	|
+|----------------------------------	|----------	|------------	|-------------	|--------------	|
+| BenchmarkJsonMarshal-8					 	| 500000	 	| 3714 ns/op 	| 1232 B/op	 	| 10 allocs/op 	|
+| BenchmarkJsonUnmarshal-8				 	| 500000	 	| 4125 ns/op 	| 416 B/op			| 7 allocs/op		|
+| BenchmarkProtobufMarshal-8			 	| 1000000		| 1554 ns/op 	| 200 B/op			| 7 allocs/op		|
+| BenchmarkProtobufUnmarshal-8		 	| 1000000		| 1055 ns/op 	| 192 B/op			| 10 allocs/op 	|
+| BenchmarkGogoprotobufMarshal-8	 	| 10000000 	| 211 ns/op		| 64 B/op		 	| 1 allocs/op		|
+| BenchmarkGogoprotobufUnmarshal-8 	| 5000000		| 289 ns/op		| 96 B/op		 	| 3 allocs/op		|
 
 Ok, now let's set up the environment.
 
