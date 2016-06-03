@@ -1,5 +1,5 @@
 syntax = "proto3";
-package userTransport;
+package Transport;
 
 message User {
     string id = 1;

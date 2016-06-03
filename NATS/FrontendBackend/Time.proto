@@ -1,5 +1,5 @@
 syntax = "proto3";
-package timeTransport;
+package Transport;
 
 message Time {
     string time = 1;
