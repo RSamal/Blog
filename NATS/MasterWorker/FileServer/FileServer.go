@@ -7,6 +7,8 @@ import (
 	"io"
 	"fmt"
 	"github.com/nats-io/nats"
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"github.com/golang/protobuf/proto"
 )
 
 func main() {
@@ -20,7 +22,8 @@ func main() {
 
 	m.HandleFunc("/{name}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		file, err := os.Open(vars["name"])
+		file, err := os.Open("/tmp/" + vars["name"])
+		defer file.Close()
 		if err != nil {
 			w.WriteHeader(404)
 		}
@@ -34,7 +37,8 @@ func main() {
 
 	m.HandleFunc("/{name}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		file, err := os.Create(vars["name"])
+		file, err := os.Create("/tmp/" + vars["name"])
+		defer file.Close()
 		if err != nil {
 			w.WriteHeader(500)
 		}
@@ -52,11 +56,15 @@ func main() {
 }
 
 func RunServiceDiscoverable() {
-	nc, err := nats.Conn{os.Args[1]}
+	nc, err := nats.Connect(os.Args[1])
 	if err != nil {
 		fmt.Println("Can't connect to NATS. Service is not discoverable.")
 	}
-	nc.Subscribe("Discover.FileServer", func(m *nats.Msg) {
-		nc.Publish(m.Reply, )
+	nc.Subscribe("Discovery.FileServer", func(m *nats.Msg) {
+		serviceAddressTransport := Transport.DiscoverableServiceTransport{"http://localhost:3000"}
+		data, err := proto.Marshal(&serviceAddressTransport)
+		if err == nil {
+			nc.Publish(m.Reply, data)
+		}
 	})
 }
