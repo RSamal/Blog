@@ -53,9 +53,11 @@ func main() {
 	nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
 		myTask := Transport.Task{}
 		err := proto.Unmarshal(m.Data, &myTask)
-		if err != nil {
+		if err == nil {
 			TaskMutex.Lock()
-
+			Tasks[myTask.Id].State = 2
+			Tasks[myTask.Id].Finisheduuid = myTask.Finisheduuid
+			TaskMutex.Unlock()
 		}
 	})
 
@@ -114,6 +116,7 @@ func initTestTasks() {
 			}
 		}
 		if bCanContinue {
+			newTask.Id = len(Tasks)
 			Tasks = append(Tasks, newTask)
 		}
 	}
