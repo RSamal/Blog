@@ -42,7 +42,7 @@ func main() {
 
 func replyWithUserId(m *nats.Msg) {
 
-	myUser := userTransport.User{}
+	myUser := Transport.User{}
 	err := proto.Unmarshal(m.Data, &myUser)
 	if err != nil {
 		fmt.Println(err)

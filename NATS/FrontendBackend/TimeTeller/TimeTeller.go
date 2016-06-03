@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"os"
 	"sync"
+	"time"
 )
 
 // We use globals because it's a small application demonstrating NATS.
@@ -33,14 +34,10 @@ func main() {
 	wg.Wait()
 }
 
-func ReplyWithTime(m *nats.Msg) {
-	err := proto.Unmarshal(m.Data, &myUser)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+func replyWithTime(m *nats.Msg) {
+	curTime := Transport.Time{time.Now().Format(time.RFC3339)}
 
-	data, err := proto.Marshal(&myUser)
+	data, err := proto.Marshal(&curTime)
 	if err != nil {
 		fmt.Println(err)
 		return
