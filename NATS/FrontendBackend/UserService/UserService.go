@@ -2,30 +2,60 @@ package main
 
 import (
 	"github.com/nats-io/nats"
-	"os"
 	"fmt"
-	"time"
+	"github.com/cube2222/Blog/NATS/FrontendBackend"
+	"github.com/golang/protobuf/proto"
+	"os"
+	"sync"
 )
 
+// We use globals because it's a small application demonstrating NATS.
+
+var users map[string]string
+var nc *nats.Conn
+
 func main() {
+
 	if len(os.Args) != 2 {
 		fmt.Println("Wrong number of arguments. Need NATS server address.")
-		return 1
+		return
 	}
-	users := make(map[string]string)
+	var err error
+
+	nc, err = nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	users = make(map[string]string)
 	users["1"] = "Bob"
 	users["2"] = "John"
 	users["3"] = "Dan"
 	users["4"] = "Kate"
-	var nc *nats.Conn
-	var err error
-	for nc, err = nats.Connect(os.Args[1]); err != nil; {
+
+	nc.QueueSubscribe("UserNameById", "userNameByIdProviders", replyWithUserId)
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	wg.Wait()
+}
+
+func replyWithUserId(m *nats.Msg) {
+
+	myUser := userTransport.User{}
+	err := proto.Unmarshal(m.Data, &myUser)
+	if err != nil {
 		fmt.Println(err)
-		fmt.Println("Trying again in 2 seconds...")
-		time.Sleep(time.Second * 2)
+		return
 	}
 
-	nc.Subscribe("UserNameById", )
-
+	myUser.Name = users[myUser.Id]
+	data, err := proto.Marshal(&myUser)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Replying to ", m.Reply)
+	nc.Publish(m.Reply, data)
 
 }

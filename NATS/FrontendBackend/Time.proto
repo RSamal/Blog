@@ -1,0 +1,6 @@
+syntax = "proto3";
+package timeTransport;
+
+message Time {
+    string time = 1;
+}
