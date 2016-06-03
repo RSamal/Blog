@@ -74,5 +74,5 @@ func handleUserWithTime(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 
-	fmt.Fprintln(w, "Hello ", myUser.Name, " with id ", myUser.Id, ", the time is ", curTime.Time, ".")
+	fmt.Fprintln(w, "Hello ", myUser.Name, " with id ", myUser.Id, ", the time is ", curTime.Time, "*")
 }
