@@ -2,15 +2,6 @@
 // source: Task.proto
 // DO NOT EDIT!
 
-/*
-Package Transport is a generated protocol buffer package.
-
-It is generated from these files:
-	Task.proto
-
-It has these top-level messages:
-	Task
-*/
 package Transport
 
 import proto "github.com/golang/protobuf/proto"
@@ -22,10 +13,6 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
-
 type Task struct {
 	Uuid         string `protobuf:"bytes,1,opt,name=uuid" json:"uuid,omitempty"`
 	Finisheduuid string `protobuf:"bytes,2,opt,name=finisheduuid" json:"finisheduuid,omitempty"`
@@ -35,13 +22,13 @@ type Task struct {
 func (m *Task) Reset()                    { *m = Task{} }
 func (m *Task) String() string            { return proto.CompactTextString(m) }
 func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*Task) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 func init() {
 	proto.RegisterType((*Task)(nil), "Transport.Task")
 }
 
-var fileDescriptor0 = []byte{
+var fileDescriptor1 = []byte{
 	// 110 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x0a, 0x49, 0x2c, 0xce,
 	0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x0c, 0x29, 0x4a, 0xcc, 0x2b, 0x2e, 0xc8, 0x2f,

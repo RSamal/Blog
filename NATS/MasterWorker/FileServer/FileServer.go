@@ -5,9 +5,17 @@ import (
 	"github.com/gorilla/mux"
 	"os"
 	"io"
+	"fmt"
+	"github.com/nats-io/nats"
 )
 
 func main() {
+
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
 	m := mux.NewRouter()
 
 	m.HandleFunc("/{name}", func(w http.ResponseWriter, r *http.Request) {
@@ -37,5 +45,18 @@ func main() {
 			}
 		}
 	}).Methods("POST")
+
+	RunServiceDiscoverable()
+
 	http.ListenAndServe(":3000", m)
+}
+
+func RunServiceDiscoverable() {
+	nc, err := nats.Conn{os.Args[1]}
+	if err != nil {
+		fmt.Println("Can't connect to NATS. Service is not discoverable.")
+	}
+	nc.Subscribe("Discover.FileServer", func(m *nats.Msg) {
+		nc.Publish(m.Reply, )
+	})
 }
