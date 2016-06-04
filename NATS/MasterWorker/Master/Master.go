@@ -41,10 +41,10 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
-		myTask, ok := getNextTask()
+		myTaskPointer, ok := getNextTask()
 		if ok {
-			data, err := proto.Marshal(&myTask)
-			if err != nil {
+			data, err := proto.Marshal(myTaskPointer)
+			if err == nil {
 				nc.Publish(m.Reply, data)
 			}
 		}
@@ -65,7 +65,7 @@ func main() {
 	wg.Wait()
 }
 
-func getNextTask() (Transport.Task, bool) {
+func getNextTask() (*Transport.Task, bool) {
 	TaskMutex.Lock()
 	defer TaskMutex.Unlock()
 	for i := oldestFinishedTaskPointer; i < len(Tasks); i++ {
@@ -75,7 +75,7 @@ func getNextTask() (Transport.Task, bool) {
 			if Tasks[i].State == 0 {
 				Tasks[i].State = 1
 				go resetTaskIfNotFinished(i)
-				return Tasks[i], true
+				return &Tasks[i], true
 			}
 		}
 	}
@@ -116,7 +116,7 @@ func initTestTasks() {
 			}
 		}
 		if bCanContinue {
-			newTask.Id = len(Tasks)
+			newTask.Id = int32(len(Tasks))
 			Tasks = append(Tasks, newTask)
 		}
 	}
