@@ -92,32 +92,29 @@ func resetTaskIfNotFinished(i int) {
 
 func initTestTasks() {
 	for i := 0; i < 20; i++ {
-		bCanContinue := true;
 		newTask := Transport.Task{Uuid: uuid.NewV4().String(), State: 0}
 		fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
 		msg, err := nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
 		if err == nil && msg != nil {
 			err := proto.Unmarshal(msg.Data, &fileServerAddressTransport)
 			if err != nil {
-				bCanContinue = false
+				continue
 			}
 		}
 		if err != nil {
-			bCanContinue = false
+			continue
 		}
-		if bCanContinue {
-			fileServerAddress := fileServerAddressTransport.Address
-			data := make([]byte, 0, 1024)
-			buf := bytes.NewBuffer(data)
-			fmt.Fprint(buf, "get,my,data,my,get,get,have")
-			r, err := http.Post(fileServerAddress + "/" + newTask.Uuid, "", buf)
-			if err != nil || r.StatusCode != http.StatusOK {
-				bCanContinue = false
-			}
+
+		fileServerAddress := fileServerAddressTransport.Address
+		data := make([]byte, 0, 1024)
+		buf := bytes.NewBuffer(data)
+		fmt.Fprint(buf, "get,my,data,my,get,get,have")
+		r, err := http.Post(fileServerAddress + "/" + newTask.Uuid, "", buf)
+		if err != nil || r.StatusCode != http.StatusOK {
+			continue
 		}
-		if bCanContinue {
-			newTask.Id = int32(len(Tasks))
-			Tasks = append(Tasks, newTask)
-		}
+
+		newTask.Id = int32(len(Tasks))
+		Tasks = append(Tasks, newTask)
 	}
 }

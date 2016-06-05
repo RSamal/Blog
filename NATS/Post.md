@@ -349,9 +349,101 @@ Now if you actually test it, you'll notice that if one of the provider services 
 
 Ok, that was already an interesting architecture. Now we can implement...
 
-## The Master-Slave patterns
+## The Master-Slave pattern
 
+This is such a popular pattern, especially in Go, that we really should know how to implement it. The workers will do simple operations on a text file (count the usage amounts of each word in a comma-separated list).
 
+Now you could think that the *Master*, should send the files to the *Workers* over NATS. Wrong. This would lead to a huge slowdown of NATS (at least for bigger files). That's why the *Master* will send the files to a file server over a REST API, and the *Workers* will get it from there. We'll also learn how to do *service discovery* over NATS.
+
+First, the *File Server*. I won't really go through the file handling part, as it's a simple get/post API.I will however, go over the *service discovery* part.
+
+```go
+package main
+
+import (
+	"net/http"
+	"github.com/gorilla/mux"
+	"os"
+	"io"
+	"fmt"
+	"github.com/nats-io/nats"
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"github.com/golang/protobuf/proto"
+)
+
+func main() {
+
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
+	m := mux.NewRouter()
+
+	m.HandleFunc("/{name}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		file, err := os.Open("/tmp/" + vars["name"])
+		defer file.Close()
+		if err != nil {
+			w.WriteHeader(404)
+		}
+		if file != nil {
+			_, err := io.Copy(w, file)
+			if err != nil {
+				w.WriteHeader(500)
+			}
+		}
+	}).Methods("GET")
+
+	m.HandleFunc("/{name}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		file, err := os.Create("/tmp/" + vars["name"])
+		defer file.Close()
+		if err != nil {
+			w.WriteHeader(500)
+		}
+		if file != nil {
+			_, err := io.Copy(file, r.Body)
+			if err != nil {
+				w.WriteHeader(500)
+			}
+		}
+	}).Methods("POST")
+
+	RunServiceDiscoverable()
+
+	http.ListenAndServe(":3000", m)
+}
+```
+
+Now, what does the *RunServiceDiscoverable* function do? It connects to the NATS server and responds with its own http address to incoming requests.
+
+```go
+func RunServiceDiscoverable() {
+	nc, err := nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println("Can't connect to NATS. Service is not discoverable.")
+	}
+	nc.Subscribe("Discovery.FileServer", func(m *nats.Msg) {
+		serviceAddressTransport := Transport.DiscoverableServiceTransport{"http://localhost:3000"}
+		data, err := proto.Marshal(&serviceAddressTransport)
+		if err == nil {
+			nc.Publish(m.Reply, data)
+		}
+	})
+}
+```
+
+The proto file looks like this:
+
+```proto
+syntax = "proto3";
+package Transport;
+
+message DiscoverableServiceTransport {
+    string Address = 1;
+}
+```
 
 
 
