@@ -61,7 +61,7 @@ func main() {
 }
 ```
 
-Now, let's write the first provider service. It will receive a *User Id*, and answer with a *user name* For that we'll need a transport structure to send its data over *NATS*. I wrote this short proto file for that:
+Now, let's write the first provider service. It will receive a *User Id*, and answer with a *user name* For which we'll need a transport structure to send its data over *NATS*. I wrote this short proto file for that:
 
 ```proto
 syntax = "proto3";
@@ -123,7 +123,7 @@ Ok, now to the *replyWithUserId* function:
 
 ```go
 func replyWithUserId(m *nats.Msg) {
-	}
+}
 ```
 
 Notice that it takes one argument, a pointer to the message.
@@ -138,7 +138,7 @@ func replyWithUserId(m *nats.Msg) {
 	if err != nil {
 		fmt.Println(err)
 		return
-	}
+}
 ```
 
 get the name and marshal back:
@@ -586,7 +586,7 @@ nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
 })
 ```
 
-How do we get the next Task? We just loop over the Task to find one that is not started. If a tasks above our pointer are all finished, then we also move up the pointer. Remember the mutex as this function may be run in parallel:
+How do we get the next Task? We just loop over the Task to find one that is not started. If tasks above our pointer are all finished, then we also move up the pointer. Remember the mutex as this function may be run in parallel:
 
 ```go
 func getNextTask() (*Transport.Task, bool) {
