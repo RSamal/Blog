@@ -866,6 +866,76 @@ for i := 10; i < 15; i++ {
 }
 ```
 
+Now we can write the receiving end. First the same structure as before:
+
+```go
+package main
+
+import (
+	"github.com/nats-io/nats"
+	natsp "github.com/nats-io/nats/encoders/protobuf"
+	"os"
+	"fmt"
+	"github.com/cube2222/Blog/NATS/EventSubs"
+)
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
+	nc, err := nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	ec, err := nats.NewEncodedConn(nc, natsp.PROTOBUF_ENCODER)
+	defer ec.Close()
+}
+```
+
+Ok, first the standard receive which is totally natural:
+
+```go
+defer ec.Close()
+
+ec.Subscribe("Messaging.Text.Standard", func(m *Transport.TextMessage) {
+  fmt.Println("Got standard message: \"", m.Body, "\" with the Id ", m.Id, ".")
+})
+```
+
+Now, the responding, which has a little bit changed syntax again. As the handler function is:
+```go
+func (subject, reply string, m *Transport.TextMessage)
+```
+
+So the responding looks like this:
+
+```go
+ec.Subscribe("Messaging.Text.Respond", func(subject, reply string, m *Transport.TextMessage) {
+  fmt.Println("Got ask for response message: \"", m.Body, "\" with the Id ", m.Id, ".")
+
+  newMessage := Transport.TextMessage{Id: m.Id, Body: "Responding!"}
+  ec.Publish(reply, &newMessage)
+})
+```
+
+And finally using channels, which doesn't differ nearly at all in comparison to the sending side:
+
+```go
+receiveChannel := make(chan *Transport.TextMessage)
+ec.BindRecvChan("Messaging.Text.Channel", receiveChannel)
+
+for m := range receiveChannel {
+  fmt.Println("Got channel'ed message: \"", m.Body, "\" with the Id ", m.Id, ".")
+}
+```
+
+Ok, that's all in the topic of NATS. I hope you liked it and discovered something new! Please comment if you have any opinions, or don't like something, or just want me to write about something.
+
+Now go and build something great!
+
+
 
 [1]: https://hub.docker.com/_/nats/
 [2]: https://github.com/nats-io/gnatsd/releases/
