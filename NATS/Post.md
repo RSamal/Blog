@@ -5,8 +5,8 @@
 Microservices... the never disappearing buzzword of our times. They promise a lot, but can be slow or complicated if not implemented correctly. One of the main challenges when developing and using a microservice-based architecture is getting the *communication* right. Many will ask, why not **REST**? As I did at some point. Many will actually use it. But the truth is that it leads to tighter coupling, and is *synchronous*. Microservice architectures are meant to be asynchronous. Also, REST is blocking, which also isn't good on many occasions.
 
 What are we meant to use for communication? Usually we use:
-  - RPC - Remote Procedure Call
-  - Message BUS/Broker
+	- RPC - Remote Procedure Call
+	- Message BUS/Broker
 
 In this article I'll write about one specific Message BUS called **NATS** and using it in Go.
 
@@ -17,10 +17,10 @@ Why NATS? It's simple, and astonishingly fast.
 ## Setting up NATS
 
 To use NATS you can do one of the following things:
-  1. Use the [NATS Docker image][1]
-  2. Get the [binaries][2]
-  3. Use the public NATS server *nats://demo.nats.io:4222*
-  4. Build from [source][3]
+	1. Use the [NATS Docker image][1]
+	2. Get the [binaries][2]
+	3. Use the public NATS server *nats://demo.nats.io:4222*
+	4. Build from [source][3]
 
 Also, remember to
 ```
@@ -68,8 +68,8 @@ syntax = "proto3";
 package Transport;
 
 message User {
-    string id = 1;
-    string name = 2;
+		string id = 1;
+		string name = 2;
 }
 ```
 
@@ -147,8 +147,8 @@ get the name and marshal back:
 myUser.Name = users[myUser.Id]
 data, err := proto.Marshal(&myUser)
 if err != nil {
-  fmt.Println(err)
-  return
+	fmt.Println(err)
+	return
 }
 ```
 
@@ -156,8 +156,8 @@ And, as this shall be a request we're handling, we respond to the *Reply topic*,
 
 ```go
 if err != nil {
-  fmt.Println(err)
-  return
+	fmt.Println(err)
+	return
 }
 fmt.Println("Replying to ", m.Reply)
 nc.Publish(m.Reply, data)
@@ -212,7 +212,7 @@ syntax = "proto3";
 package Transport;
 
 message Time {
-    string time = 1;
+		string time = 1;
 }
 ```
 
@@ -285,13 +285,13 @@ We've parsed the request arguments and started a *WaitGroup* with the value two,
 
 ```go
 go func() {
-  data, err := proto.Marshal(&myUser)
-  if err != nil || len(myUser.Id) == 0 {
-    fmt.Println(err)
-    w.WriteHeader(500)
-    fmt.Println("Problem with parsing the user Id.")
-    return
-  }
+	data, err := proto.Marshal(&myUser)
+	if err != nil || len(myUser.Id) == 0 {
+		fmt.Println(err)
+		w.WriteHeader(500)
+		fmt.Println("Problem with parsing the user Id.")
+		return
+	}
 ```
 
 and, then we make a request. Sending the user data, and waiting at most 100 ms for the response:
@@ -309,11 +309,11 @@ now we can check if any error happend, or the response is empty and finish this 
 ```go
 msg, err := nc.Request("UserNameById", data, 100 * time.Millisecond)
 if err == nil && msg != nil {
-  myUserWithName := Transport.User{}
-  err := proto.Unmarshal(msg.Data, &myUserWithName)
-  if err == nil {
-    myUser = myUserWithName
-  }
+	myUserWithName := Transport.User{}
+	err := proto.Unmarshal(msg.Data, &myUserWithName)
+	if err == nil {
+		myUser = myUserWithName
+	}
 }
 wg.Done()
 }()
@@ -324,15 +324,15 @@ We again make a request, but its body is nil, as we don't need to pass any data:
 
 ```go
 go func() {
-  msg, err := nc.Request("TimeTeller", nil, 100*time.Millisecond)
-  if err == nil && msg != nil {
-    receivedTime := Transport.Time{}
-    err := proto.Unmarshal(msg.Data, &receivedTime)
-    if err == nil {
-      curTime = receivedTime
-    }
-  }
-  wg.Done()
+	msg, err := nc.Request("TimeTeller", nil, 100*time.Millisecond)
+	if err == nil && msg != nil {
+		receivedTime := Transport.Time{}
+		err := proto.Unmarshal(msg.Data, &receivedTime)
+		if err == nil {
+			curTime = receivedTime
+		}
+	}
+	wg.Done()
 }()
 ```
 
@@ -441,7 +441,7 @@ syntax = "proto3";
 package Transport;
 
 message DiscoverableServiceTransport {
-    string Address = 1;
+		string Address = 1;
 }
 ```
 
@@ -454,10 +454,10 @@ syntax = "proto3";
 package Transport;
 
 message Task {
-    string uuid = 1;
-    string finisheduuid = 2;
-    int32 state = 3; // 0 - not started, 1 - in progress, 2 - finished
-    int32 id = 4;
+		string uuid = 1;
+		string finisheduuid = 2;
+		int32 state = 3; // 0 - not started, 1 - in progress, 2 - finished
+		int32 id = 4;
 }
 ```
 
@@ -538,20 +538,20 @@ We create a new *Task* and ask the *File Server* for its address:
 
 ```go
 for i := 0; i < 20; i++ {
-  newTask := Transport.Task{Uuid: uuid.NewV4().String(), State: 0}
-  fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
-  msg, err := nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
-  if err == nil && msg != nil {
-    err := proto.Unmarshal(msg.Data, &fileServerAddressTransport)
-    if err != nil {
-      continue
-    }
-  }
-  if err != nil {
-    continue
-  }
+	newTask := Transport.Task{Uuid: uuid.NewV4().String(), State: 0}
+	fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
+	msg, err := nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
+	if err == nil && msg != nil {
+		err := proto.Unmarshal(msg.Data, &fileServerAddressTransport)
+		if err != nil {
+			continue
+		}
+	}
+	if err != nil {
+		continue
+	}
 
-  fileServerAddress := fileServerAddressTransport.Address
+	fileServerAddress := fileServerAddressTransport.Address
 }
 ```
 
@@ -576,13 +576,13 @@ How do we dispatch new Tasks to do? Simply like this:
 
 ```go
 nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
-  myTaskPointer, ok := getNextTask()
-  if ok {
-    data, err := proto.Marshal(myTaskPointer)
-    if err == nil {
-      nc.Publish(m.Reply, data)
-    }
-  }
+	myTaskPointer, ok := getNextTask()
+	if ok {
+		data, err := proto.Marshal(myTaskPointer)
+		if err == nil {
+			nc.Publish(m.Reply, data)
+		}
+	}
 })
 ```
 
@@ -623,14 +623,14 @@ The TaskFinished subscription handler is much simpler, it just sets the Task to 
 
 ```go
 nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
-  myTask := Transport.Task{}
-  err := proto.Unmarshal(m.Data, &myTask)
-  if err == nil {
-    TaskMutex.Lock()
-    Tasks[myTask.Id].State = 2
-    Tasks[myTask.Id].Finisheduuid = myTask.Finisheduuid
-    TaskMutex.Unlock()
-  }
+	myTask := Transport.Task{}
+	err := proto.Unmarshal(m.Data, &myTask)
+	if err == nil {
+		TaskMutex.Lock()
+		Tasks[myTask.Id].State = 2
+		Tasks[myTask.Id].Finisheduuid = myTask.Finisheduuid
+		TaskMutex.Unlock()
+	}
 })
 ```
 
@@ -811,8 +811,8 @@ syntax = "proto3";
 package Transport;
 
 message TextMessage {
-    int32 id = 1;
-    string body = 2;
+		int32 id = 1;
+		string body = 2;
 }
 ```
 
@@ -822,12 +822,12 @@ Ok, how can we just publish simple event-structs? Totally intuitive, like that:
 defer ec.Close()
 
 for i := 0; i < 5; i++ {
-  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over standard!"}
+	myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over standard!"}
 
-  err := ec.Publish("Messaging.Text.Standard", &myMessage)
-  if err != nil {
-    fmt.Println(err)
-  }
+	err := ec.Publish("Messaging.Text.Standard", &myMessage)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 ```
 
@@ -841,15 +841,15 @@ So our request sending part will look like this:
 
 ```go
 for i := 5; i < 10; i++ {
-  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello, please respond!"}
+	myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello, please respond!"}
 
-  res := Transport.TextMessage{}
-  err := ec.Request("Messaging.Text.Respond", &myMessage, &res, 200 * time.Millisecond)
-  if err != nil {
-    fmt.Println(err)
-  }
+	res := Transport.TextMessage{}
+	err := ec.Request("Messaging.Text.Respond", &myMessage, &res, 200 * time.Millisecond)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-  fmt.Println(res.Body, " with id ", res.Id)
+	fmt.Println(res.Body, " with id ", res.Id)
 
 }
 ```
@@ -860,9 +860,9 @@ The last thing we can do is sending them via Channels, which is relatively the s
 sendChannel := make(chan *Transport.TextMessage)
 ec.BindSendChan("Messaging.Text.Channel", sendChannel)
 for i := 10; i < 15; i++ {
-  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over channel!"}
+	myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over channel!"}
 
-  sendChannel <- &myMessage
+	sendChannel <- &myMessage
 }
 ```
 
@@ -900,7 +900,7 @@ Ok, first the standard receive which is totally natural:
 defer ec.Close()
 
 ec.Subscribe("Messaging.Text.Standard", func(m *Transport.TextMessage) {
-  fmt.Println("Got standard message: \"", m.Body, "\" with the Id ", m.Id, ".")
+	fmt.Println("Got standard message: \"", m.Body, "\" with the Id ", m.Id, ".")
 })
 ```
 
@@ -913,10 +913,10 @@ So the responding looks like this:
 
 ```go
 ec.Subscribe("Messaging.Text.Respond", func(subject, reply string, m *Transport.TextMessage) {
-  fmt.Println("Got ask for response message: \"", m.Body, "\" with the Id ", m.Id, ".")
+	fmt.Println("Got ask for response message: \"", m.Body, "\" with the Id ", m.Id, ".")
 
-  newMessage := Transport.TextMessage{Id: m.Id, Body: "Responding!"}
-  ec.Publish(reply, &newMessage)
+	newMessage := Transport.TextMessage{Id: m.Id, Body: "Responding!"}
+	ec.Publish(reply, &newMessage)
 })
 ```
 
@@ -927,7 +927,7 @@ receiveChannel := make(chan *Transport.TextMessage)
 ec.BindRecvChan("Messaging.Text.Channel", receiveChannel)
 
 for m := range receiveChannel {
-  fmt.Println("Got channel'ed message: \"", m.Body, "\" with the Id ", m.Id, ".")
+	fmt.Println("Got channel'ed message: \"", m.Body, "\" with the Id ", m.Id, ".")
 }
 ```
 
