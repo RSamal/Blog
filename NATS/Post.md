@@ -445,9 +445,430 @@ message DiscoverableServiceTransport {
 }
 ```
 
+We can now go on with the *Master*.
+
+The protofile for the *Task* structure is:
+
+```proto
+syntax = "proto3";
+package Transport;
+
+message Task {
+    string uuid = 1;
+    string finisheduuid = 2;
+    int32 state = 3; // 0 - not started, 1 - in progress, 2 - finished
+    int32 id = 4;
+}
+```
+
+Our *Master* will hold a list of tasks with the respecting **UUID** (at the same time the name of the file), id (the position in the master Tasks slice), and a pointer which holds the position of the last not finished Task, which will get updated on new Task retrieval. It's pretty similar to the Task storage in my [Microservice Architecture series][5]
+
+I'm using *github.com/satori/go.uuid* for **UUID** generation.
+
+First, as usual, the basic structure:
+
+```go
+package main
+
+import (
+	"github.com/satori/go.uuid"
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"os"
+	"fmt"
+	"github.com/nats-io/nats"
+	"github.com/golang/protobuf/proto"
+	"time"
+	"bytes"
+	"net/http"
+	"sync"
+)
+
+var Tasks []Transport.Task
+var TaskMutex sync.Mutex
+var oldestFinishedTaskPointer int
+var nc *nats.Conn
+
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
+	var err error
+
+	nc, err = nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	Tasks = make([]Transport.Task, 0, 20)
+	TaskMutex = sync.Mutex{}
+	oldestFinishedTaskPointer = 0
+
+	initTestTasks()
+
+	wg := sync.WaitGroup{}
+
+	nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
+	})
+
+	nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
+	})
+
+	wg.Add(1)
+	wg.Wait()
+}
+```
+
+Ok, we've also already set up the *Subscriptions*
+
+How does the *initTestTasks* function work? It's interesting because it gets the file server address over NATS.
+
+So, we want to create 20 test Tasks, so we run the loop 20 times:
+
+```go
+func initTestTasks() {
+	for i := 0; i < 20; i++ {
+	}
+}
+```
+
+We create a new *Task* and ask the *File Server* for its address:
+
+```go
+for i := 0; i < 20; i++ {
+  newTask := Transport.Task{Uuid: uuid.NewV4().String(), State: 0}
+  fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
+  msg, err := nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
+  if err == nil && msg != nil {
+    err := proto.Unmarshal(msg.Data, &fileServerAddressTransport)
+    if err != nil {
+      continue
+    }
+  }
+  if err != nil {
+    continue
+  }
+
+  fileServerAddress := fileServerAddressTransport.Address
+}
+```
+
+Next we finally make the post Request to the file server and add the Task to our Tasks list:
+
+```go
+		fileServerAddress := fileServerAddressTransport.Address
+		data := make([]byte, 0, 1024)
+		buf := bytes.NewBuffer(data)
+		fmt.Fprint(buf, "get,my,data,my,get,get,have")
+		r, err := http.Post(fileServerAddress + "/" + newTask.Uuid, "", buf)
+		if err != nil || r.StatusCode != http.StatusOK {
+			continue
+		}
+
+		newTask.Id = int32(len(Tasks))
+		Tasks = append(Tasks, newTask)
+	}
+```
+
+How do we dispatch new Tasks to do? Simply like this:
+
+```go
+nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
+  myTaskPointer, ok := getNextTask()
+  if ok {
+    data, err := proto.Marshal(myTaskPointer)
+    if err == nil {
+      nc.Publish(m.Reply, data)
+    }
+  }
+})
+```
+
+How do we get the next Task? We just loop over the Task to find one that is not started. If a tasks above our pointer are all finished, then we also move up the pointer. Remember the mutex as this function may be run in parallel:
+
+```go
+func getNextTask() (*Transport.Task, bool) {
+	TaskMutex.Lock()
+	defer TaskMutex.Unlock()
+	for i := oldestFinishedTaskPointer; i < len(Tasks); i++ {
+		if i == oldestFinishedTaskPointer && Tasks[i].State == 2 {
+			oldestFinishedTaskPointer++
+		} else {
+			if Tasks[i].State == 0 {
+				Tasks[i].State = 1
+				go resetTaskIfNotFinished(i)
+				return &Tasks[i], true
+			}
+		}
+	}
+	return nil, false
+}
+```
+
+We also called the *resetTaskIfNotFinished* function. It will reset the Task state if it's still in progress after 2 minutes:
+
+```go
+func resetTaskIfNotFinished(i int) {
+	time.Sleep(2 * time.Minute)
+	TaskMutex.Lock()
+	if Tasks[i].State != 2 {
+		Tasks[i].State = 0
+	}
+}
+```
+
+The TaskFinished subscription handler is much simpler, it just sets the Task to finished, and the **UUID** accordingly to the received protobuffer:
+
+```go
+nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
+  myTask := Transport.Task{}
+  err := proto.Unmarshal(m.Data, &myTask)
+  if err == nil {
+    TaskMutex.Lock()
+    Tasks[myTask.Id].State = 2
+    Tasks[myTask.Id].Finisheduuid = myTask.Finisheduuid
+    TaskMutex.Unlock()
+  }
+})
+```
+
+That's all in regards to the *Master*! We can now move on writing the *Worker*.
+
+The basic structure:
+
+```go
+package main
+
+import (
+	"os"
+	"fmt"
+	"github.com/nats-io/nats"
+	"time"
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"github.com/golang/protobuf/proto"
+	"net/http"
+	"bytes"
+	"io/ioutil"
+	"sort"
+	"strings"
+	"github.com/satori/go.uuid"
+	"sync"
+)
+
+var nc *nats.Conn
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
+	var err error
+
+	nc, err = nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for i := 0; i < 8; i++ {
+		go doWork()
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	wg.Wait()
+}
+```
+
+Now the main function doing something here is the *doWork* function. I'll post it all at once with comments everywhere, as it's a very long function and this will be the most convenient way to read it:
+
+```go
+func doWork() {
+	for {
+		// We ask for a Task with a 1 second Timeout
+		msg, err := nc.Request("Work.TaskToDo", nil, 1 * time.Second)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		// We unmarshal the Task
+		curTask := Transport.Task{}
+		err = proto.Unmarshal(msg.Data, &curTask)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		// We get the FileServer address
+		msg, err = nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
+		err = proto.Unmarshal(msg.Data, &fileServerAddressTransport)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		// We get the file
+		fileServerAddress := fileServerAddressTransport.Address
+		r, err := http.Get(fileServerAddress + "/" + curTask.Uuid)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		// We split and count the words
+		words := strings.Split(string(data), ",")
+		sort.Strings(words)
+		wordCounts := make(map[string]int)
+		for i := 0; i < len(words); i++{
+			wordCounts[words[i]] = wordCounts[words[i]] + 1
+		}
+
+		resultData := make([]byte, 0, 1024)
+		buf := bytes.NewBuffer(resultData)
+
+		// We print the results to a buffer
+		for key, value := range wordCounts {
+			fmt.Fprintln(buf, key, ":", value)
+		}
+
+		// We generate a new UUID for the finished file
+		curTask.Finisheduuid = uuid.NewV4().String()
+		r, err = http.Post(fileServerAddress + "/" + curTask.Finisheduuid, "", buf)
+		if err != nil || r.StatusCode != http.StatusOK {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err, ":", r.StatusCode)
+			continue
+		}
+
+		// We marshal the current Task into a protobuffer
+		data, err = proto.Marshal(&curTask)
+		if err != nil {
+			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
+			continue
+		}
+
+		// We notify the Master about finishing the Task
+		nc.Publish("Work.TaskFinished", data)
+	}
+}
+```
+
+Awesome, our *Master-Slave* setup is ready, you can test it if you'd like. After you do, we can now check out the last architecture.
+
+## The Events pattern
+
+Imagine you have servers which keep connections to clients over websockets. You want these clients to get live news updates. With this pattern you can. We'll also learn about a few convenient NATS client abstractions. Like using a encoded connection, or using channels for sending/receiving.
+
+The basic architecture as usual:
+
+```go
+package main
+
+import (
+	"os"
+	"fmt"
+	"github.com/nats-io/nats"
+	natsp "github.com/nats-io/nats/encoders/protobuf"
+	"github.com/cube2222/Blog/NATS/EventSubs"
+	"time"
+)
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Wrong number of arguments. Need NATS server address.")
+		return
+	}
+
+	nc, err := nats.Connect(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	ec, err := nats.NewEncodedConn(nc, natsp.PROTOBUF_ENCODER)
+	defer ec.Close()
+}
+```
+
+Wait... What's that at the end!? It's an encoded connection! It will automatically encode our structs into raw data. We'll use the protobuf one, but there are a default one, a gob one and a json one too.
+
+Here's the protofile we'll use:
+
+```proto
+syntax = "proto3";
+package Transport;
+
+message TextMessage {
+    int32 id = 1;
+    string body = 2;
+}
+```
+
+Ok, how can we just publish simple event-structs? Totally intuitive, like that:
+
+```go
+defer ec.Close()
+
+for i := 0; i < 5; i++ {
+  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over standard!"}
+
+  err := ec.Publish("Messaging.Text.Standard", &myMessage)
+  if err != nil {
+    fmt.Println(err)
+  }
+}
+```
+
+It's a little bit counter intuitive with Requests. As the signature differs, it follows like this:
+
+```go
+err := ec.Request(topic, *body, *response, timeout)
+```
+
+So our request sending part will look like this:
+
+```go
+for i := 5; i < 10; i++ {
+  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello, please respond!"}
+
+  res := Transport.TextMessage{}
+  err := ec.Request("Messaging.Text.Respond", &myMessage, &res, 200 * time.Millisecond)
+  if err != nil {
+    fmt.Println(err)
+  }
+
+  fmt.Println(res.Body, " with id ", res.Id)
+
+}
+```
+
+The last thing we can do is sending them via Channels, which is relatively the simplest:
+
+```go
+sendChannel := make(chan *Transport.TextMessage)
+ec.BindSendChan("Messaging.Text.Channel", sendChannel)
+for i := 10; i < 15; i++ {
+  myMessage := Transport.TextMessage{Id: int32(i), Body: "Hello over channel!"}
+
+  sendChannel <- &myMessage
+}
+```
 
 
 [1]: https://hub.docker.com/_/nats/
 [2]: https://github.com/nats-io/gnatsd/releases/
 [3]: https://github.com/nats-io/gnatsd
 [4]: https://jacobmartins.com/2016/05/24/practical-golang-using-protobuffs/
+[5]: https://jacobmartins.com/2016/03/14/web-app-using-microservices-in-go-part-1-design/
