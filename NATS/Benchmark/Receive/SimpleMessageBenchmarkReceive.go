@@ -28,7 +28,7 @@ func main() {
 
 	nc.Subscribe("Benchmark", func(m *nats.Msg) {
 		atomic.AddInt32(&i,1)
-		if i > 9000000 {
+		if i > 1000000 {
 			endChan <- 1
 		}
 	})
