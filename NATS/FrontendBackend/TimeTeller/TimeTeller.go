@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/nats-io/nats"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/cube2222/Blog/NATS/FrontendBackend"
 	"github.com/golang/protobuf/proto"
-	"os"
-	"sync"
-	"time"
+	"github.com/nats-io/nats"
 )
 
 // We use globals because it's a small application demonstrating NATS.
@@ -28,10 +28,7 @@ func main() {
 	}
 
 	nc.QueueSubscribe("TimeTeller", "TimeTellers", replyWithTime)
-	wg := sync.WaitGroup{}
-
-	wg.Add(1)
-	wg.Wait()
+	select {}
 }
 
 func replyWithTime(m *nats.Msg) {

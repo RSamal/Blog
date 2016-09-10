@@ -1,23 +1,23 @@
 package main
 
 import (
-	"github.com/satori/go.uuid"
-	"github.com/cube2222/Blog/NATS/MasterWorker"
-	"os"
-	"fmt"
-	"github.com/nats-io/nats"
-	"github.com/golang/protobuf/proto"
-	"time"
 	"bytes"
+	"fmt"
 	"net/http"
+	"os"
 	"sync"
+	"time"
+
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"github.com/golang/protobuf/proto"
+	"github.com/nats-io/nats"
+	"github.com/satori/go.uuid"
 )
 
 var Tasks []Transport.Task
 var TaskMutex sync.Mutex
 var oldestFinishedTaskPointer int
 var nc *nats.Conn
-
 
 func main() {
 	if len(os.Args) != 2 {
@@ -38,9 +38,7 @@ func main() {
 
 	initTestTasks()
 
-	wg := sync.WaitGroup{}
-
-	nc.Subscribe("Work.TaskToDo", func (m *nats.Msg) {
+	nc.Subscribe("Work.TaskToDo", func(m *nats.Msg) {
 		myTaskPointer, ok := getNextTask()
 		if ok {
 			data, err := proto.Marshal(myTaskPointer)
@@ -50,7 +48,7 @@ func main() {
 		}
 	})
 
-	nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
+	nc.Subscribe("Work.TaskFinished", func(m *nats.Msg) {
 		myTask := Transport.Task{}
 		err := proto.Unmarshal(m.Data, &myTask)
 		if err == nil {
@@ -61,8 +59,7 @@ func main() {
 		}
 	})
 
-	wg.Add(1)
-	wg.Wait()
+	select {}
 }
 
 func getNextTask() (*Transport.Task, bool) {
@@ -94,7 +91,7 @@ func initTestTasks() {
 	for i := 0; i < 20; i++ {
 		newTask := Transport.Task{Uuid: uuid.NewV4().String(), State: 0}
 		fileServerAddressTransport := Transport.DiscoverableServiceTransport{}
-		msg, err := nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
+		msg, err := nc.Request("Discovery.FileServer", nil, 1000*time.Millisecond)
 		if err == nil && msg != nil {
 			err := proto.Unmarshal(msg.Data, &fileServerAddressTransport)
 			if err != nil {
@@ -109,7 +106,7 @@ func initTestTasks() {
 		data := make([]byte, 0, 1024)
 		buf := bytes.NewBuffer(data)
 		fmt.Fprint(buf, "get,my,data,my,get,get,have")
-		r, err := http.Post(fileServerAddress + "/" + newTask.Uuid, "", buf)
+		r, err := http.Post(fileServerAddress+"/"+newTask.Uuid, "", buf)
 		if err != nil || r.StatusCode != http.StatusOK {
 			continue
 		}

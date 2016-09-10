@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/nats-io/nats"
 	"fmt"
+	"os"
+
 	"github.com/cube2222/Blog/NATS/FrontendBackend"
 	"github.com/golang/protobuf/proto"
-	"os"
-	"sync"
+	"github.com/nats-io/nats"
 )
 
 // We use globals because it's a small application demonstrating NATS.
@@ -34,10 +34,7 @@ func main() {
 	users["4"] = "Kate"
 
 	nc.QueueSubscribe("UserNameById", "userNameByIdProviders", replyWithUserId)
-	wg := sync.WaitGroup{}
-
-	wg.Add(1)
-	wg.Wait()
+	select {}
 }
 
 func replyWithUserId(m *nats.Msg) {

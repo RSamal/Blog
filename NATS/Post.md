@@ -108,14 +108,11 @@ users["4"] = "Kate"
 nc.QueueSubscribe("UserNameById", "userNameByIdProviders", replyWithUserId)
 ```
 
-Notice that it's a **QueueSubscribe**. Which means that if we start 10 instances of this service in the *userNameByIdProviders* group , only one will get each message sent over *UserNameById*. Another thing to note is that this function call is asynchronous, so we need to block somehow. This will provide an endless block:
+Notice that it's a **QueueSubscribe**. Which means that if we start 10 instances of this service in the *userNameByIdProviders* group , only one will get each message sent over *UserNameById*. Another thing to note is that this function call is asynchronous, so we need to block somehow. This *select {}* will provide an endless block:
 
 ```go
 nc.QueueSubscribe("UserNameById", "userNameByIdProviders", replyWithUserId)
-wg := sync.WaitGroup{}
-
-wg.Add(1)
-wg.Wait()
+select {}
 }
 ```
 
@@ -198,10 +195,7 @@ func main() {
 	}
 
 	nc.QueueSubscribe("TimeTeller", "TimeTellers", replyWithTime)
-	wg := sync.WaitGroup{}
-
-	wg.Add(1)
-	wg.Wait()
+	select {} // Block forever
 }
 ```
 
@@ -516,8 +510,7 @@ func main() {
 	nc.Subscribe("Work.TaskFinished", func (m *nats.Msg) {
 	})
 
-	wg.Add(1)
-	wg.Wait()
+	select {} // Block forever
 }
 ```
 
@@ -676,9 +669,7 @@ func main() {
 		go doWork()
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	wg.Wait()
+	select {} // Block forever
 }
 ```
 

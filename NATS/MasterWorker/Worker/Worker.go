@@ -1,19 +1,19 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"github.com/nats-io/nats"
-	"time"
-	"github.com/cube2222/Blog/NATS/MasterWorker"
-	"github.com/golang/protobuf/proto"
-	"net/http"
 	"bytes"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/cube2222/Blog/NATS/MasterWorker"
+	"github.com/golang/protobuf/proto"
+	"github.com/nats-io/nats"
 	"github.com/satori/go.uuid"
-	"sync"
 )
 
 var nc *nats.Conn
@@ -35,15 +35,13 @@ func main() {
 		go doWork()
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	wg.Wait()
+	select {}
 }
 
 func doWork() {
 	for {
 		// We ask for a Task with a 1 second Timeout
-		msg, err := nc.Request("Work.TaskToDo", nil, 1 * time.Second)
+		msg, err := nc.Request("Work.TaskToDo", nil, 1*time.Second)
 		if err != nil {
 			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
 			continue
@@ -58,7 +56,7 @@ func doWork() {
 		}
 
 		// We get the FileServer address
-		msg, err = nc.Request("Discovery.FileServer", nil, 1000 * time.Millisecond)
+		msg, err = nc.Request("Discovery.FileServer", nil, 1000*time.Millisecond)
 		if err != nil {
 			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err)
 			continue
@@ -89,7 +87,7 @@ func doWork() {
 		words := strings.Split(string(data), ",")
 		sort.Strings(words)
 		wordCounts := make(map[string]int)
-		for i := 0; i < len(words); i++{
+		for i := 0; i < len(words); i++ {
 			wordCounts[words[i]] = wordCounts[words[i]] + 1
 		}
 
@@ -103,7 +101,7 @@ func doWork() {
 
 		// We generate a new UUID for the finished file
 		curTask.Finisheduuid = uuid.NewV4().String()
-		r, err = http.Post(fileServerAddress + "/" + curTask.Finisheduuid, "", buf)
+		r, err = http.Post(fileServerAddress+"/"+curTask.Finisheduuid, "", buf)
 		if err != nil || r.StatusCode != http.StatusOK {
 			fmt.Println("Something went wrong. Waiting 2 seconds before retrying:", err, ":", r.StatusCode)
 			continue
